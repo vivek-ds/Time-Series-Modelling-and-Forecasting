@@ -1,0 +1,139 @@
+---
+title: "7050_CaseStudy2"
+author: "Vivek Sahoo"
+date: "11/26/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+The first step is to load the data, visualize the time series, and plot its ACF and PACF and only then identify the appropriate ARIMA model to fit.
+
+## 1) Data Visualization
+
+```{r}
+#Visualize Time Series, plot ACF and PACF
+data=as.ts(scan("HW4.txt"))
+par(mfrow=c(1,3))
+plot(data)
+acf(data)
+pacf(data)
+```
+
+## (2) the identification of the model to be fit together with your rational based upon the appropriate plots and outputs
+
+The model seems to be non stationary with a clearly upward trend. Let's perform the ADF test to check for stationarity
+
+```{r}
+#Test Stationarity
+library(aTSA)
+adf.test(data)
+```
+
+The model is clearly non stationary for all k values upto 4 and irrespective of drift of trend. Let's take the first order difference and check for stationarity again.
+
+```{r}
+#Revisualize data after differencing once
+data_diff = diff(data)
+par(mfrow=c(1,3))
+plot(data_diff)
+acf(data_diff)
+pacf(data_diff)
+```
+
+The model still shows an upward trend over time. It doesn't seem to be stationary. Let's perform the ADF test again to check for stationarity.
+
+```{r}
+#Test Stationarity for first order differenced data
+adf.test(data_diff)
+```
+
+This model is non stationary too for all k values upto 4 and irrespective of drift of trend with even the lowest p value (for lag 1) being >0.3. Let's take the second order difference and check for stationarity again.
+
+```{r}
+data_diff2 = diff(data_diff)
+par(mfrow=c(1,3))
+plot(data_diff2)
+acf(data_diff2)
+pacf(data_diff2)
+```
+
+This model seems to be stationarity with no clear trend and somewhat constant variance over time. The ACF is cut off at lag 2 and the PACF is white noise. But lag 2 is not that significant. MA(2) or MA(1) might be good fit to this second order differenced data.
+
+But let's confirm the stationarity before proceeding further.
+
+```{r}
+#Test Stationarity of second order differenced data
+adf.test(data_diff2)
+```
+
+The p values are 0.01 for all lags upto 4 which clearly suggests that the null hypothesis: model is non-stationary can be rejected for second order differenced data. Hence we conclude a good fit to the given data may be either an ARIMA(0,2,1) or ARIMA(0,2,2) model.
+
+## 3) estimation of the model parameters and interpretation of significance of the parameters
+
+```{r}
+fit = arima(x = data, order = c(0, 2, 1))
+#Model parameters and significance of ARMA(0,2,1)
+fit
+
+fit2 = arima(x = data, order = c(0, 2, 2))
+#Model parameters and significance of ARMA(0,2,2)
+fit2
+```
+
+### Arima(0,2,1)
+
+The Model Parameter θ1 = -0.3722 can  be considered significant since the corresponding z value which can be obtained by dividing the parameter by its standard error is -0.1070 for θ1.
+
+This z value is substantially smaller than -1.96 which is the threshold to reject the null hypothesis that the paramter have a value of 0.
+
+### Arima(0,2,2)
+
+The MA(2) term is not significant since the standard error of the θ2 is larger than the estimate of θ2
+
+### We select ARIMA(0,2,1) to proceed further for the above reasons and also because it has a lower AIC.
+
+## (4) diagnostic checking on residuals and possible revision to your model choice
+
+```{r}
+#Diagnostic checks of Model residuals
+par(mfrow=c(1,3))
+plot(fit$resid)
+acf(fit$resid)
+pacf(fit$resid)
+```
+
+Plotting the residuals against time, we see the distribution might actually be white noise. But in order to confirm this, we also take ACF and PACF into consideration. From the ACF and PACF plots, we get strong evidence that the residual distribution is white noise, since none of the ACF & PACF values are above the significant level (except ACF at lag 0 which is always 1)
+
+We also perform the 'Ljung-Box test' to test the null hypothesis that the residuals i.e. the errors are not correlated.
+
+```{r}
+Box.test(resid(fit), lag = 3, type = "Ljung-Box", fitdf = 2)
+```
+
+Based on the p value for the above test, we can't reject the null hypothesis. Hence we can conclude our model is a good fit to the data.
+
+Let's visualize our fitted model with the data.
+
+```{r}
+plot.ts(data)
+points(fitted(fit),pch=20,col="red")
+points(fitted(fit),type="l",col="red")
+```
+
+The Model seems to fit well with the data.
+
+## (5) forecasts for the period in question (2 years)
+
+```{r}
+library(forecast)
+
+plot(forecast(fit, h=24))
+```
+
+
+
+
+
+
+
