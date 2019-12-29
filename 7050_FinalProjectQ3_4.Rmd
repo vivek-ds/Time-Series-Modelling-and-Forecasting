@@ -1,0 +1,91 @@
+---
+title: "7050_FinalProject3_4"
+author: "Vivek Sahoo"
+date: "12/3/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+#Question 3
+
+```{r}
+library(tseries)
+data2 = read.csv("MORTGAGE30USsince2005.csv")
+data2 = as.ts(data2[,2])
+data3 = read.csv("MORTGAGE5USsince2005.csv")
+data3 = as.ts(data3[,2])
+data4 = read.csv("MORTGAGE15USsince2005.csv")
+data4 = as.ts(data4[,2])
+
+
+mge23 = as.matrix(cbind(data2,data3), demean = FALSE)
+po.test(mge23)
+
+mge34 = as.matrix(cbind(data3,data4), demean = FALSE)
+po.test(mge34)
+
+mge24 = as.matrix(cbind(data2,data4), demean = FALSE)
+po.test(mge24)
+```
+
+#Analysing Results
+
+15-Year Fixed Rate Mortgage and 5/1-Year Adjustable Rate Mortgage combined give the best results. But none of the pairs can reject the null hypothesis of non co-integration.
+
+#Question 4
+
+```{r}
+cpi = read.csv("CPIAUCSLsince1954.csv")
+cpi = as.ts(cpi[,2])
+fund = read.csv("FEDFUNDSsince1954.csv")
+fund = as.ts(fund[,2])
+unemploy = read.csv("UNRATEsince1954.csv")
+unemploy = as.ts(unemploy[,2])
+
+econ = as.matrix(cbind(cpi,fund,unemploy), demean = FALSE)
+
+library(vars)
+
+VARselect(econ, lag.max=8,
+          type="const")[["selection"]]
+```
+
+#Determining Lag Length
+As per AIC we suggests the lag length of 5 whereas BIC(SC) suggets 3. 
+Let's iteratively check the p value for Portmanteau test starting with 3.
+
+```{r}
+var3 <- VAR(econ, p=3, type="const")
+serial.test(var3, lags.pt=10, type="PT.asymptotic")
+```
+
+It's suggests non stationarity. Let's try lag length of 4 and 5.
+
+```{r}
+#var4
+var4 <- VAR(econ, p=4, type="const")
+serial.test(var4, lags.pt=10, type="PT.asymptotic")
+
+#var5
+var5 <- VAR(econ, p=5, type="const")
+serial.test(var5, lags.pt=10, type="PT.asymptotic")
+```
+
+We still have to reject the null hypothesis. We will choose var(3) which suggests the least complex model
+
+```{r}
+var3
+
+#Granger Causality
+summary(var3)
+```
+
+We can spot the significant lags per the output above
+
+```{r}
+library(forecast)
+plot(forecast(var3, h=50))
+```
+
+There's slight upward trend as compared with the result in 2 since CPI has a high upward trend which influences the forecast

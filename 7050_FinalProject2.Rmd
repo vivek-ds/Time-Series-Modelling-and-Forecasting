@@ -1,0 +1,117 @@
+---
+title: "7050_FinalProjectQ2"
+author: "Vivek Sahoo"
+date: "12/03/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+The first step is to load the data, visualize the time series, and plot its ACF and PACF and only then identify the appropriate ARIMA model to fit.
+
+## 1) Data Visualization
+
+```{r}
+#Visualize Time Series, plot ACF and PACF
+data2 = read.csv("UNRATEsince1954.csv")
+data = as.ts(data2[,2])
+par(mfrow=c(1,3))
+plot(data)
+acf(data)
+pacf(data)
+```
+
+## (2) the identification of the model to be fit together with your rational based upon the appropriate plots and outputs
+
+The model seems to be non stationary with non constant variance. Let's perform the ADF test to check for stationarity
+
+```{r}
+#Test Stationarity
+library(aTSA)
+adf.test(data)
+```
+
+The model is clearly non stationary for since we can't reject the null hypothesis with the above p values. Let's take the first order difference and check for stationarity again.
+
+```{r}
+#Revisualize data after differencing once
+data_diff = diff(data)
+par(mfrow=c(1,3))
+plot(data_diff)
+acf(data_diff)
+pacf(data_diff)
+```
+
+This model seems to be stationary with no clear trend and constant variance over time. Let's perform ADF test to confirm the hypothesis.
+
+
+```{r}
+#Test Stationarity for first order differenced data
+adf.test(data_diff)
+```
+
+
+The p values are 0.01 for all lags upto 6 which clearly suggests that the null hypothesis: model is non-stationary can be rejected for first order differenced data.
+
+From the ACF and PACF charts, we observe ACF decays exponentially after a lag of 4 and PACF is has a spike at lag 2 post which it decays exponentially.
+
+This gives us an intuition that the model might be in the neighbourhood of ARIMA(4,1,2)
+
+## 3) estimation of the model parameters and interpretation of significance of the parameters
+
+```{r}
+fit = arima(x = data, order = c(4, 1, 2))
+#Model parameters and significance of ARIMA(2,1,2)
+fit
+```
+
+### Arima(4,1,2)
+
+The ϕ1, ϕ2, ϕ3, ϕ4, θ1, θ2 all seem to be significant with respective absolute values greater than 2.
+
+At this point we will not try building more complex models if we are able to fit this current model with the data well.
+
+## (4) diagnostic checking on residuals and possible revision to your model choice
+
+```{r}
+#Diagnostic checks of Model residuals
+par(mfrow=c(1,3))
+plot(fit$resid)
+acf(fit$resid)
+pacf(fit$resid)
+```
+
+Plotting the residuals against time, we see the distribution might actually be white noise. But in order to confirm this, we also take ACF and PACF into consideration. From the ACF and PACF plots, we get strong evidence that the residual distribution is white noise, since most of the ACF & PACF values are below the significant level (except for lags greater than 10, but including these higher orders will over complicate the model)
+
+We also perform the 'Ljung-Box test' to test the null hypothesis that the residuals i.e. the errors are not correlated.
+
+```{r}
+Box.test(resid(fit), lag = 8, type = "Ljung-Box", fitdf = 6)
+```
+
+Based on the p value for the above test, we can't reject the null hypothesis. Hence we can conclude our model is a good fit to the data.
+
+Let's visualize our fitted model with the data.
+
+```{r}
+plot.ts(data)
+points(fitted(fit),pch=20,col="red")
+points(fitted(fit),type="l",col="red")
+```
+
+The Model seems to fit well with the data.
+
+## (5) forecasts for the period in question (50 observations)
+
+```{r}
+library(forecast)
+
+plot(forecast(fit, h = 50))
+```
+
+
+
+
+
+
+
